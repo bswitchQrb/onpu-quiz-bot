@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "onpu-quiz-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+  // 出題用の五線譜画像（scripts/generate-images.ts で生成）。/notes/*.png として配信する
+  "assets": { "directory": "./public" },
+  "triggers": {
+    // 毎朝 9:00（JST）に出題
+    "crons": ["0 0 * * *"]
+  },
+  "vars": {
+    // どれも公開して問題ない値（Bot Token は wrangler secret で登録する）
+    "DISCORD_APPLICATION_ID": "1574034606238335127",
+    "DISCORD_PUBLIC_KEY": "3f0008ad7f7705ef0898341312aba8932637e75c888d8af533207c83511aea04",
+    "QUIZ_CHANNEL_ID": "1574034439560765511",
+    "PUBLIC_BASE_URL": "https://onpu-quiz-bot.bee2.workers.dev"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "onpu-quiz-bot",
+      "database_id": "75ad6835-dd8a-48b5-af0d-c9c3dc95b91b",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
