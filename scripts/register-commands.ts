@@ -30,6 +30,26 @@ if (!applicationId || !token) {
 const commands = [
   { name: 'ranking', description: '正解数のランキングを表示する', type: 1 },
   { name: 'stats', description: '自分の成績を表示する（自分にだけ見えます）', type: 1 },
+  {
+    name: 'mode',
+    description: '出題モード（ト音記号／ヘ音記号／両方）を表示・変更する',
+    type: 1,
+    // サーバーの管理権限（MANAGE_GUILD）がある人にだけコマンドを表示する
+    default_member_permissions: String(1 << 5),
+    options: [
+      {
+        name: 'clef',
+        description: '次の問題から使うモード。省略すると今のモードを表示する',
+        type: 3,
+        required: false,
+        choices: [
+          { name: 'ト音記号', value: 'treble' },
+          { name: 'ヘ音記号', value: 'bass' },
+          { name: '両方', value: 'both' },
+        ],
+      },
+    ],
+  },
 ];
 
 const res = await fetch(`https://discord.com/api/v10/applications/${applicationId}/commands`, {

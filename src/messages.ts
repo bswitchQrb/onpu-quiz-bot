@@ -2,7 +2,7 @@
 
 import type { ActionRow, Embed, MessagePayload } from './discord/api';
 import { EPHEMERAL } from './discord/api';
-import { JA_NAMES, LETTERS, imagePath, type Letter, type Note } from './notes';
+import { JA_NAMES, LETTERS, MODE_NAMES, imagePath, type Letter, type Mode, type Note } from './notes';
 import { answerCustomId, describeNote } from './quiz';
 import type { ScoreRow } from './db';
 
@@ -32,6 +32,7 @@ export function questionMessage(
   questionId: number,
   postedOn: string,
   note: Note,
+  mode: Mode,
   baseUrl: string,
   previous: PreviousResult | null,
 ): MessagePayload {
@@ -45,7 +46,7 @@ export function questionMessage(
     description: lines.join('\n'),
     color: COLOR,
     image: { url: `${baseUrl}${imagePath(note)}` },
-    footer: { text: `問題 #${questionId}` },
+    footer: { text: `問題 #${questionId}・出題：${MODE_NAMES[mode]}` },
   };
   return { embeds: [embed], components: answerButtons(questionId) };
 }
@@ -84,4 +85,15 @@ export function rankingMessage(rows: ScoreRow[]): MessagePayload {
 export function statsMessage(score: ScoreRow | null): MessagePayload {
   if (!score) return ephemeral('まだ回答していないみたい。今日の問題に答えてみてね🎵');
   return ephemeral(`📊 あなたの成績：${score.answered} 問中 **${score.correct} 問**正解（正答率 ${rate(score)}）`);
+}
+
+export function modeMessage(mode: Mode): MessagePayload {
+  return ephemeral(`今の出題モードは「${MODE_NAMES[mode]}」だよ`);
+}
+
+/** モードの変更はみんなに知らせる */
+export function modeChangedMessage(mode: Mode, changedBy: string): MessagePayload {
+  return {
+    content: `🎼 次の問題から、出題モードを「${MODE_NAMES[mode]}」にしたよ（変更：${escapeMarkdown(changedBy)}）`,
+  };
 }

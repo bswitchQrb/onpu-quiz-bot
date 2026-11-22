@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { canManageGuild } from '../src/discord/api';
 import { verifyDiscordRequest } from '../src/discord/verify';
 import { answerResultMessage, escapeMarkdown, questionMessage, rankingMessage } from '../src/messages';
 import { ALL_NOTES, BASS_NOTES, TREBLE_NOTES, describePosition, findNote } from '../src/notes';
@@ -40,8 +41,14 @@ describe('出題', () => {
   it('前回と同じ音符は出さない', () => {
     const previous = ALL_NOTES[0];
     for (let i = 0; i < 38; i++) {
-      const note = pickNote(previous, () => i / 38);
+      const note = pickNote('both', previous, () => i / 38);
       expect(note.clef === previous.clef && note.name === previous.name).toBe(false);
+    }
+  });
+
+  it.each(['treble', 'bass'] as const)('モードが %s なら、その音部記号だけから出す', (mode) => {
+    for (let i = 0; i < 19; i++) {
+      expect(pickNote(mode, null, () => i / 19).clef).toBe(mode);
     }
   });
 
@@ -60,17 +67,18 @@ describe('出題', () => {
 
 describe('メッセージ', () => {
   it('問題には画像と 7 つのボタン（4 + 3）が付く', () => {
-    const message = questionMessage(5, '2026-11-23', findNote('treble', 'C4')!, 'https://example.com', null);
+    const message = questionMessage(5, '2026-11-23', findNote('treble', 'C4')!, 'treble', 'https://example.com', null);
     expect(message.embeds?.[0].image?.url).toBe('https://example.com/notes/treble-C4.png');
     expect(message.components?.map((row) => row.components.map((b) => b.label))).toEqual([
       ['ド', 'レ', 'ミ', 'ファ'],
       ['ソ', 'ラ', 'シ'],
     ]);
     expect(message.components?.[0].components[0].custom_id).toBe('answer:5:C');
+    expect(message.embeds?.[0].footer?.text).toBe('問題 #5・出題：ト音記号');
   });
 
   it('前回の答えと正解率を載せる', () => {
-    const message = questionMessage(6, '2026-11-24', findNote('bass', 'C3')!, 'https://example.com', {
+    const message = questionMessage(6, '2026-11-24', findNote('bass', 'C3')!, 'both', 'https://example.com', {
       note: findNote('treble', 'C4')!,
       answered: 5,
       correct: 3,
@@ -88,6 +96,22 @@ describe('メッセージ', () => {
     expect(escapeMarkdown('**a_b**')).toBe('\\*\\*a\\_b\\*\\*');
     const description = rankingMessage([{ user_id: '1', username: 'x', correct: 3, answered: 4 }]).embeds?.[0].description;
     expect(description).toBe('🥇 x — **3 問**正解（4 問中・75%）');
+  });
+});
+
+describe('権限', () => {
+  const member = (permissions?: string) => ({ type: 2, member: { user: { id: '1', username: 'u' }, permissions } });
+
+  it('サーバーの管理か管理者の権限があれば、モードを変えられる', () => {
+    expect(canManageGuild(member(String(1 << 5)))).toBe(true);
+    expect(canManageGuild(member(String(1 << 3)))).toBe(true);
+    // 「メッセージを送る」などだけでは変えられない
+    expect(canManageGuild(member(String((1 << 11) | (1 << 10))))).toBe(false);
+    expect(canManageGuild(member())).toBe(false);
+  });
+
+  it('64 ビットを超える大きな権限の値も扱える', () => {
+    expect(canManageGuild(member(((1n << 50n) | (1n << 5n)).toString()))).toBe(true);
   });
 });
 
