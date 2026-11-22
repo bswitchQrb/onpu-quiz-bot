@@ -1,8 +1,16 @@
 import * as db from './db';
-import { InteractionType, ResponseType, postMessage, type Interaction, type MessagePayload } from './discord/api';
+import { InteractionType, ResponseType, canManageGuild, postMessage, type Interaction, type MessagePayload } from './discord/api';
 import { verifyDiscordRequest } from './discord/verify';
-import { answerResultMessage, ephemeral, questionMessage, rankingMessage, statsMessage } from './messages';
-import { JA_NAMES, findNote, type Letter } from './notes';
+import {
+  answerResultMessage,
+  ephemeral,
+  modeChangedMessage,
+  modeMessage,
+  questionMessage,
+  rankingMessage,
+  statsMessage,
+} from './messages';
+import { JA_NAMES, findNote, isMode, type Letter } from './notes';
 import { isCorrect, parseAnswerCustomId, pickNote } from './quiz';
 
 const RANKING_SIZE = 10;
@@ -18,9 +26,9 @@ function respond(payload: MessagePayload): Response {
 
 /** 今日の問題を投稿する。同じ日にもう出題済みなら何もしない */
 async function postDailyQuestion(env: Env, now: number): Promise<void> {
-  const previous = await db.latestQuestion(env.DB);
+  const [previous, mode] = await Promise.all([db.latestQuestion(env.DB), db.getMode(env.DB)]);
   const postedOn = jstDate(now);
-  const note = pickNote(previous ? { clef: previous.clef, name: previous.note } : null);
+  const note = pickNote(mode, previous ? { clef: previous.clef, name: previous.note } : null);
 
   const question = await db.insertQuestion(env.DB, postedOn, note.clef, note.name);
   if (!question) {
@@ -35,7 +43,7 @@ async function postDailyQuestion(env: Env, now: number): Promise<void> {
     const message = await postMessage(
       env.DISCORD_BOT_TOKEN,
       env.QUIZ_CHANNEL_ID,
-      questionMessage(question.id, postedOn, note, env.PUBLIC_BASE_URL, previousResult),
+      questionMessage(question.id, postedOn, note, mode, env.PUBLIC_BASE_URL, previousResult),
     );
     await db.setMessageId(env.DB, question.id, message.id);
     console.log(`問題 #${question.id}（${note.clef} ${note.name}）を投稿`);
@@ -72,6 +80,24 @@ async function handleAnswer(env: Env, interaction: Interaction): Promise<Respons
   return respond(answerResultMessage(note, parsed.letter, correct));
 }
 
+/** /mode：引数なしなら今のモードを表示、ありなら変更（サーバーの管理権限が必要） */
+async function handleModeCommand(env: Env, interaction: Interaction): Promise<Response> {
+  const value = interaction.data?.options?.find((option) => option.name === 'clef')?.value;
+  if (value === undefined) {
+    return respond(modeMessage(await db.getMode(env.DB)));
+  }
+  // Discord 側でもコマンドを管理者だけに見せているが、サーバーの設定で変えられるので、ここでも確かめる
+  if (!canManageGuild(interaction)) {
+    return respond(ephemeral('出題モードを変えられるのは、サーバーの管理権限がある人だけだよ'));
+  }
+  if (!isMode(value)) {
+    return respond(ephemeral('そのモードは選べないよ'));
+  }
+  await db.setMode(env.DB, value);
+  const user = interaction.member?.user ?? interaction.user;
+  return respond(modeChangedMessage(value, user?.global_name ?? user?.username ?? '不明'));
+}
+
 async function handleCommand(env: Env, interaction: Interaction): Promise<Response> {
   switch (interaction.data?.name) {
     case 'ranking':
@@ -80,6 +106,8 @@ async function handleCommand(env: Env, interaction: Interaction): Promise<Respon
       const user = interaction.member?.user ?? interaction.user;
       return respond(statsMessage(user ? await db.userScore(env.DB, user.id) : null));
     }
+    case 'mode':
+      return handleModeCommand(env, interaction);
     default:
       return respond(ephemeral('知らないコマンドだよ'));
   }

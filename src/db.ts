@@ -1,6 +1,6 @@
 /** D1 への読み書き */
 
-import type { Clef } from './notes';
+import { isMode, type Clef, type Mode } from './notes';
 
 export interface QuestionRow {
   id: number;
@@ -102,4 +102,20 @@ export async function userScore(db: D1Database, userId: string): Promise<ScoreRo
     )
     .bind(userId)
     .first<ScoreRow>();
+}
+
+/** 出題モード。未設定なら「両方」 */
+export async function getMode(db: D1Database): Promise<Mode> {
+  const row = await db.prepare("SELECT value FROM settings WHERE key = 'mode'").first<{ value: string }>();
+  return isMode(row?.value) ? row.value : 'both';
+}
+
+export async function setMode(db: D1Database, mode: Mode): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO settings (key, value) VALUES ('mode', ?)
+       ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+    )
+    .bind(mode)
+    .run();
 }

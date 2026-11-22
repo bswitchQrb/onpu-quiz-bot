@@ -1,10 +1,16 @@
 /** 出題と判定のロジック（Discord や D1 に依存しない部分） */
 
-import { ALL_NOTES, CLEF_NAMES, JA_NAMES, LETTERS, describePosition, type Letter, type Note } from './notes';
+import { ALL_NOTES, CLEF_NAMES, JA_NAMES, LETTERS, describePosition, type Letter, type Mode, type Note } from './notes';
 
-/** 前回と同じ音符は出さずに、ランダムに 1 つ選ぶ */
-export function pickNote(previous: Pick<Note, 'clef' | 'name'> | null, random: () => number = Math.random): Note {
-  const candidates = ALL_NOTES.filter((n) => !(previous && n.clef === previous.clef && n.name === previous.name));
+/** 出題モードに合う音符から、前回と同じものを除いてランダムに 1 つ選ぶ */
+export function pickNote(
+  mode: Mode,
+  previous: Pick<Note, 'clef' | 'name'> | null,
+  random: () => number = Math.random,
+): Note {
+  const candidates = ALL_NOTES.filter(
+    (n) => (mode === 'both' || n.clef === mode) && !(previous && n.clef === previous.clef && n.name === previous.name),
+  );
   return candidates[Math.floor(random() * candidates.length)];
 }
 

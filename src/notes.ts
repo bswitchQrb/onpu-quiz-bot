@@ -33,6 +33,20 @@ export const CLEF_NAMES: Record<Clef, string> = {
   bass: 'ヘ音記号',
 };
 
+/** 出題モード：どの音部記号から出すか */
+export type Mode = Clef | 'both';
+
+export const MODES: Mode[] = ['treble', 'bass', 'both'];
+
+export const MODE_NAMES: Record<Mode, string> = {
+  ...CLEF_NAMES,
+  both: '両方',
+};
+
+export function isMode(value: unknown): value is Mode {
+  return typeof value === 'string' && (MODES as string[]).includes(value);
+}
+
 /** 一番下の線の音から、指定した数だけ音を並べる */
 function range(clef: Clef, bottomLine: string, from: number, to: number): Note[] {
   const startIndex = LETTERS.indexOf(bottomLine[0] as Letter);

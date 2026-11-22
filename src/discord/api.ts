@@ -43,9 +43,27 @@ export interface DiscordUser {
 
 export interface Interaction {
   type: number;
-  data?: { name?: string; custom_id?: string };
-  member?: { user: DiscordUser };
+  data?: {
+    name?: string;
+    custom_id?: string;
+    options?: { name: string; value: string | number | boolean }[];
+  };
+  /** permissions はビットフラグを 10 進数の文字列にしたもの */
+  member?: { user: DiscordUser; permissions?: string };
   user?: DiscordUser;
+}
+
+export const Permission = {
+  ADMINISTRATOR: 1n << 3n,
+  MANAGE_GUILD: 1n << 5n,
+} as const;
+
+/** サーバーの管理（または管理者）権限があるか */
+export function canManageGuild(interaction: Interaction): boolean {
+  const raw = interaction.member?.permissions;
+  if (!raw) return false;
+  const permissions = BigInt(raw);
+  return (permissions & (Permission.ADMINISTRATOR | Permission.MANAGE_GUILD)) !== 0n;
 }
 
 export async function postMessage(botToken: string, channelId: string, payload: MessagePayload): Promise<{ id: string }> {
