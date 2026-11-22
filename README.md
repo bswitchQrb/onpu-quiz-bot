@@ -35,3 +35,7 @@ Discord Developer Portal の Interactions Endpoint URL に `https://<worker の�
 npm run images   # 五線譜の画像を作り直す（src/notes.ts を変えたとき）
 npm test
 ```
+
+## ライセンス
+
+[MIT License](LICENSE) © 2026 bswitchQrb
