@@ -24,7 +24,7 @@ npm run db:migrate                         # D1 にテーブルを作る
 npx wrangler secret put DISCORD_BOT_TOKEN  # Bot Token を登録
 npm run deploy
 cp .dev.vars.example .dev.vars             # Bot Token を書く（git には入らない）
-npm run register-commands                  # /ranking と /stats を登録
+npm run register-commands                  # /ranking・/stats・/mode を登録
 ```
 
 Discord Developer Portal の Interactions Endpoint URL に `https://<worker のドメイン>/interactions` を設定します。
